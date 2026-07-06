@@ -40,6 +40,20 @@ class VideoJob:
     raw: dict[str, Any]
 
 
+@dataclasses.dataclass
+class TranscriptionResult:
+    text: str
+    raw: dict[str, Any]
+
+
+@dataclasses.dataclass
+class CreditsInfo:
+    total_credits: float
+    total_usage: float
+    balance: float
+    raw: dict[str, Any]
+
+
 def _model_dump(obj: Any) -> dict[str, Any]:
     if hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")
@@ -228,6 +242,54 @@ class OpenRouterAdapter:
             "video_generation.list_videos_models", self._client.video_generation.list_videos_models
         )
         return [_model_dump(m) for m in result.data]
+
+    # -- audio ------------------------------------------------------------------
+
+    def audio_transcribe(
+        self,
+        *,
+        model: str,
+        input_audio: dict,
+        language: Optional[str] = None,
+    ) -> TranscriptionResult:
+        kwargs: dict[str, Any] = {"model": model, "input_audio": input_audio}
+        if language is not None:
+            kwargs["language"] = language
+        result = self._call("stt.create_transcription", self._client.stt.create_transcription, **kwargs)
+        return TranscriptionResult(text=result.text, raw=_model_dump(result))
+
+    def audio_speak(
+        self,
+        *,
+        model: str,
+        text: str,
+        voice: str,
+        response_format: str = "mp3",
+        speed: Optional[float] = None,
+    ) -> bytes:
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "input": text,
+            "voice": voice,
+            "response_format": response_format,
+        }
+        if speed is not None:
+            kwargs["speed"] = speed
+        resp = self._call("tts.create_speech", self._client.tts.create_speech, **kwargs)
+        # create_speech returns a streamed httpx.Response, same as get_video_content.
+        return resp.read()
+
+    # -- account ------------------------------------------------------------------
+
+    def get_credits(self) -> CreditsInfo:
+        result = self._call("credits.get_credits", self._client.credits.get_credits)
+        data = result.data
+        return CreditsInfo(
+            total_credits=data.total_credits,
+            total_usage=data.total_usage,
+            balance=data.total_credits - data.total_usage,
+            raw=_model_dump(result),
+        )
 
 
 def build_adapter(api_key: str, base_url: Optional[str] = None) -> OpenRouterAdapter:

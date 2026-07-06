@@ -1,6 +1,6 @@
 from typing import Any, Callable, Optional
 
-from openrouter_cli.sdk_adapter import ChatAnalysisResult, ImageResult, VideoJob
+from openrouter_cli.sdk_adapter import ChatAnalysisResult, CreditsInfo, ImageResult, TranscriptionResult, VideoJob
 
 
 class FakeAdapter:
@@ -18,6 +18,9 @@ class FakeAdapter:
         chat_models: Optional[list[dict]] = None,
         image_models: Optional[list[dict]] = None,
         video_models: Optional[list[dict]] = None,
+        transcription_result: Optional[TranscriptionResult] = None,
+        audio_content: bytes = b"",
+        credits_info: Optional[CreditsInfo] = None,
         raise_exc: Optional[Exception] = None,
     ):
         self.chat_result = chat_result
@@ -28,6 +31,9 @@ class FakeAdapter:
         self.chat_models = chat_models or []
         self.image_models = image_models or []
         self.video_models = video_models or []
+        self.transcription_result = transcription_result
+        self.audio_content = audio_content
+        self.credits_info = credits_info
         self.raise_exc = raise_exc
         self.calls: list[tuple[str, dict]] = []
 
@@ -82,6 +88,21 @@ class FakeAdapter:
         self.calls.append(("list_video_models", {}))
         self._maybe_raise()
         return self.video_models
+
+    def audio_transcribe(self, **kwargs) -> TranscriptionResult:
+        self.calls.append(("audio_transcribe", kwargs))
+        self._maybe_raise()
+        return self.transcription_result
+
+    def audio_speak(self, **kwargs) -> bytes:
+        self.calls.append(("audio_speak", kwargs))
+        self._maybe_raise()
+        return self.audio_content
+
+    def get_credits(self) -> CreditsInfo:
+        self.calls.append(("get_credits", {}))
+        self._maybe_raise()
+        return self.credits_info
 
 
 def build_adapter_factory(fake: FakeAdapter) -> Callable[..., FakeAdapter]:

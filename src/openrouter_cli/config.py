@@ -59,3 +59,28 @@ def get_image_model(explicit: Optional[str]) -> str:
 
 def get_video_model(explicit: Optional[str]) -> str:
     return explicit or os.environ.get("OPENROUTER_VIDEO_MODEL") or DEFAULT_VIDEO_MODEL
+
+
+# No DEFAULT_STT_MODEL/DEFAULT_TTS_MODEL: unlike chat/image/video, there's no SDK
+# list_models() endpoint for these modalities to sanity-check a guessed default
+# against, so require the caller to be explicit instead of silently picking one.
+
+
+def get_stt_model(explicit: Optional[str]) -> str:
+    model = explicit or os.environ.get("OPENROUTER_STT_MODEL")
+    if not model:
+        raise ConfigError(
+            "No speech-to-text model specified. Pass --model or set $OPENROUTER_STT_MODEL. "
+            "Discover options with `orouter models list --input-modality audio`."
+        )
+    return model
+
+
+def get_tts_model(explicit: Optional[str]) -> str:
+    model = explicit or os.environ.get("OPENROUTER_TTS_MODEL")
+    if not model:
+        raise ConfigError(
+            "No text-to-speech model specified. Pass --model or set $OPENROUTER_TTS_MODEL. "
+            "Discover options with `orouter models list --output-modality audio`."
+        )
+    return model
