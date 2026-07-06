@@ -31,11 +31,17 @@ orouter analyze kite.mp4 --prompt "Analyze flight physics" --model google/gemini
 # Generate an image
 orouter image generate --prompt "Traditional Lahore patang" --output patang.png
 
+# Generate an image with a specific model
+orouter image generate --prompt "Traditional Lahore patang" --model google/gemini-3.1-flash-lite-image --output patang.png
+
 # Edit or combine reference image(s) with a text prompt
 orouter image edit --input patang.png --prompt "make the sky sunset colored" --output edited.png
 
 # Generate a video (asynchronous - --wait polls until it's done and downloads it)
 orouter video generate --prompt "Two Pakistani kites fighting" --model google/veo-3.1 --wait --output paicha.mp4
+
+# Generate a video with audio using a specific model
+orouter video generate --prompt "Kids flying kites on a rooftop in Old Lahore, Pakistan" --model bytedance/seedance-2.0 --audio --wait --output lahore_kites.mp4
 
 # Discover models before picking --model
 orouter models list --input-modality video

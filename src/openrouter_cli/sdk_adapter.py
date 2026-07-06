@@ -219,7 +219,9 @@ class OpenRouterAdapter:
             job_id=job_id,
             index=index,
         )
-        return resp.content
+        # get_video_content returns a streamed httpx.Response - .content raises
+        # ResponseNotRead until the body has actually been pulled off the wire.
+        return resp.read()
 
     def list_video_models(self) -> list[dict]:
         result = self._call(
