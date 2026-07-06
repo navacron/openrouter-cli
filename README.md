@@ -4,6 +4,35 @@
 multimodal files, generate images/video/speech, transcribe audio, and discover models - from the
 shell or from a coding agent like Claude Code.
 
+## Built for agents
+
+`orouter` is meant to be driven by coding/automation agents - Claude Code, Hermes, OpenClaw, or
+your own scripts - as naturally as by a human typing commands:
+
+- **Self-documenting**: every command's `--help` includes runnable examples, so an agent that has
+  never seen this README can still learn the CLI cold from `orouter --help` and
+  `orouter <command> --help`.
+- **`--json` everywhere**: pass `--json` and stdout becomes a single parseable JSON object - no
+  prose to strip out. Errors follow the same rule: structured JSON on stderr instead of a
+  human-readable message.
+- **Predictable exit codes**: `0` success, `2` bad input/config (missing API key, bad file type,
+  missing model), `3` a `--wait` poll timed out (the job is still running server-side), `4` the
+  provider reported the job failed. Scripts can branch on these without parsing text.
+- **No interactive prompts** - every command either succeeds, fails, or (for video) polls on a
+  fixed interval; nothing ever blocks waiting for a keypress.
+- **Scriptable async video**: `video generate --wait` blocks and downloads for you, or omit
+  `--wait` and use `video status`/`video download` to poll on your own schedule - handy for an
+  agent juggling several in-flight jobs at once.
+
+This makes it straightforward to automate image and video generation workflows end to end, e.g.
+an agent chaining chat -> image -> video into one pipeline:
+
+```bash
+PROMPT=$(orouter --json chat "Give me one vivid, one-sentence scene of kites flying in Old Lahore" | jq -r .text)
+orouter image generate --prompt "$PROMPT" --output scene.png
+orouter video generate --prompt "$PROMPT" --model google/veo-3.1 --wait --output scene.mp4
+```
+
 ## Install
 
 ```bash
