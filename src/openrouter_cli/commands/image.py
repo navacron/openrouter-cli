@@ -3,12 +3,56 @@ from typing import Optional
 
 import typer
 
-from openrouter_cli import io_utils
+from openrouter_cli import io_utils, mime_utils
 from openrouter_cli.config import get_api_key, get_base_url, get_image_model, get_run_ctx
 from openrouter_cli.output import echo, emit_result, handle_errors
 from openrouter_cli import sdk_adapter
 
 app = typer.Typer(help="Generate images and discover image models.", no_args_is_help=True)
+
+
+def _generate_and_save(
+    *,
+    prompt: str,
+    output: Path,
+    model: Optional[str],
+    n: int,
+    size: Optional[str],
+    aspect_ratio: Optional[str],
+    resolution: Optional[str],
+    quality: Optional[str],
+    seed: Optional[int],
+    output_format: Optional[str],
+    input_references: Optional[list[dict]] = None,
+) -> None:
+    run_ctx = get_run_ctx()
+    api_key = get_api_key(run_ctx)
+    resolved_model = get_image_model(model)
+
+    with sdk_adapter.build_adapter(api_key, get_base_url(run_ctx)) as adapter:
+        result = adapter.image_generate(
+            model=resolved_model,
+            prompt=prompt,
+            n=n,
+            size=size,
+            aspect_ratio=aspect_ratio,
+            resolution=resolution,
+            quality=quality,
+            seed=seed,
+            output_format=output_format,
+            input_references=input_references,
+        )
+
+    paths = io_utils.save_b64_images(result.images_b64, output)
+
+    def render(data):
+        for p in data["files"]:
+            echo(p)
+
+    emit_result(
+        {"model": resolved_model, "prompt": prompt, "files": [str(p) for p in paths]},
+        render,
+    )
 
 
 @app.command("generate")
@@ -33,32 +77,61 @@ def generate(
       orouter image generate --prompt "Traditional Lahore patang" --output patang.png
       orouter image generate --prompt "logo variations" --n 4 --output logo.png
     """
-    run_ctx = get_run_ctx()
-    api_key = get_api_key(run_ctx)
-    resolved_model = get_image_model(model)
+    _generate_and_save(
+        prompt=prompt,
+        output=output,
+        model=model,
+        n=n,
+        size=size,
+        aspect_ratio=aspect_ratio,
+        resolution=resolution,
+        quality=quality,
+        seed=seed,
+        output_format=output_format,
+    )
 
-    with sdk_adapter.build_adapter(api_key, get_base_url(run_ctx)) as adapter:
-        result = adapter.image_generate(
-            model=resolved_model,
-            prompt=prompt,
-            n=n,
-            size=size,
-            aspect_ratio=aspect_ratio,
-            resolution=resolution,
-            quality=quality,
-            seed=seed,
-            output_format=output_format,
-        )
 
-    paths = io_utils.save_b64_images(result.images_b64, output)
+@app.command("edit")
+@handle_errors
+def edit(
+    input_: list[str] = typer.Option(
+        ..., "--input", "-i", help="Reference image (local path or URL) to edit/combine. Repeatable."
+    ),
+    prompt: str = typer.Option(..., "--prompt", "-p", help="How to edit or combine the reference image(s)."),
+    output: Path = typer.Option(..., "--output", "-o", help="Where to save the edited image."),
+    model: Optional[str] = typer.Option(
+        None, "--model", "-m", help="Image model to use. Defaults to $OPENROUTER_IMAGE_MODEL."
+    ),
+    n: int = typer.Option(1, "--n", help="Number of variations to generate."),
+    size: Optional[str] = typer.Option(None, "--size"),
+    aspect_ratio: Optional[str] = typer.Option(None, "--aspect-ratio", help="e.g. 1:1, 16:9, 9:16."),
+    resolution: Optional[str] = typer.Option(None, "--resolution", help="e.g. 1K, 2K, 4K."),
+    quality: Optional[str] = typer.Option(None, "--quality", help="auto, low, medium, or high."),
+    seed: Optional[int] = typer.Option(None, "--seed"),
+    output_format: Optional[str] = typer.Option(None, "--output-format", help="png, jpeg, webp, or svg."),
+) -> None:
+    """Edit or combine one or more reference images using a text prompt.
 
-    def render(data):
-        for p in data["files"]:
-            echo(p)
-
-    emit_result(
-        {"model": resolved_model, "prompt": prompt, "files": [str(p) for p in paths]},
-        render,
+    Examples:
+      orouter image edit --input photo.jpg --prompt "make the sky sunset colored" --output edited.png
+      orouter image edit --input a.png --input b.png --prompt "blend these into one scene" --output combo.png
+    """
+    references = [
+        mime_utils.build_content_part(ref, "image", mime_utils.guess_mime(ref) or "image/png")
+        for ref in input_
+    ]
+    _generate_and_save(
+        prompt=prompt,
+        output=output,
+        model=model,
+        n=n,
+        size=size,
+        aspect_ratio=aspect_ratio,
+        resolution=resolution,
+        quality=quality,
+        seed=seed,
+        output_format=output_format,
+        input_references=references,
     )
 
 

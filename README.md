@@ -7,6 +7,8 @@ like Claude Code.
 ## Install
 
 ```bash
+python3 -m venv .venv          # optional, but recommended
+source .venv/bin/activate
 pip install -e .
 export OPENROUTER_API_KEY=sk-or-...   # https://openrouter.ai/keys
 ```
@@ -28,6 +30,9 @@ orouter analyze kite.mp4 --prompt "Analyze flight physics" --model google/gemini
 
 # Generate an image
 orouter image generate --prompt "Traditional Lahore patang" --output patang.png
+
+# Edit or combine reference image(s) with a text prompt
+orouter image edit --input patang.png --prompt "make the sky sunset colored" --output edited.png
 
 # Generate a video (asynchronous - --wait polls until it's done and downloads it)
 orouter video generate --prompt "Two Pakistani kites fighting" --model google/veo-3.1 --wait --output paicha.mp4
@@ -56,5 +61,10 @@ JSON on stderr too), and every command's `--help` includes runnable examples - r
 
 ```bash
 pip install -e ".[dev]"
-pytest
+pytest                                    # full suite
+pytest tests/test_video.py                # single file
+pytest tests/test_video.py::test_video_generate_wait_polls_and_downloads  # single test
 ```
+
+See `CLAUDE.md` for an architecture overview (SDK isolation boundary, output/error
+conventions, testing seam) if you're working on the codebase itself.

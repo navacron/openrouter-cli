@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Setup (editable install, dev extras)
-source .venv/bin/activate          # venv already exists at repo root
+python3 -m venv .venv              # only if .venv doesn't already exist (optional)
+source .venv/bin/activate
 pip install -e ".[dev]"
 
 # Run the full test suite

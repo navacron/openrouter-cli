@@ -150,6 +150,7 @@ class OpenRouterAdapter:
         quality: Optional[str] = None,
         seed: Optional[int] = None,
         output_format: Optional[str] = None,
+        input_references: Optional[list[dict]] = None,
     ) -> ImageResult:
         kwargs: dict[str, Any] = {"model": model, "prompt": prompt}
         for k, v in dict(
@@ -160,6 +161,7 @@ class OpenRouterAdapter:
             quality=quality,
             seed=seed,
             output_format=output_format,
+            input_references=input_references,
         ).items():
             if v is not None:
                 kwargs[k] = v
