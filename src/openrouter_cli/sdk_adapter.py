@@ -85,9 +85,19 @@ def _video_job_from_response(resp: Any) -> VideoJob:
     )
 
 
+DEFAULT_TIMEOUT_MS = 120_000
+
+
 class OpenRouterAdapter:
     def __init__(self, api_key: str, base_url: Optional[str] = None):
-        kwargs: dict[str, Any] = {"api_key": api_key}
+        # The SDK's underlying httpx.Client is built with no explicit timeout,
+        # so it falls back to httpx's 5s default. Slow endpoints (image/video
+        # generation) blow past that, and a bare ReadTimeout is treated as a
+        # retryable connection error - the SDK then silently retries with
+        # exponential backoff for up to an hour (RetryConfig default
+        # max_elapsed_time=3600000ms) before finally raising. Setting
+        # timeout_ms here avoids the spurious timeouts that trigger it.
+        kwargs: dict[str, Any] = {"api_key": api_key, "timeout_ms": DEFAULT_TIMEOUT_MS}
         if base_url:
             kwargs["server_url"] = base_url
         self._client = OpenRouter(**kwargs)

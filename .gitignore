@@ -7,3 +7,4 @@ dist/
 .pytest_cache/
 .coverage
 .env
+viking_video/
