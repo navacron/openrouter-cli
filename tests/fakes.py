@@ -1,6 +1,14 @@
 from typing import Any, Callable, Optional
 
-from openrouter_cli.sdk_adapter import ChatAnalysisResult, CreditsInfo, ImageResult, TranscriptionResult, VideoJob
+from openrouter_cli.sdk_adapter import (
+    ChatAnalysisResult,
+    CreditsInfo,
+    EmbeddingResult,
+    ImageResult,
+    RerankResult,
+    TranscriptionResult,
+    VideoJob,
+)
 
 
 class FakeAdapter:
@@ -21,6 +29,11 @@ class FakeAdapter:
         transcription_result: Optional[TranscriptionResult] = None,
         audio_content: bytes = b"",
         credits_info: Optional[CreditsInfo] = None,
+        embedding_result: Optional[EmbeddingResult] = None,
+        rerank_result: Optional[RerankResult] = None,
+        model_info: Optional[dict] = None,
+        providers: Optional[list[dict]] = None,
+        generation_info: Optional[dict] = None,
         raise_exc: Optional[Exception] = None,
     ):
         self.chat_result = chat_result
@@ -34,6 +47,11 @@ class FakeAdapter:
         self.transcription_result = transcription_result
         self.audio_content = audio_content
         self.credits_info = credits_info
+        self.embedding_result = embedding_result
+        self.rerank_result = rerank_result
+        self.model_info = model_info or {}
+        self.providers = providers or []
+        self.generation_info = generation_info or {}
         self.raise_exc = raise_exc
         self.calls: list[tuple[str, dict]] = []
 
@@ -103,6 +121,31 @@ class FakeAdapter:
         self.calls.append(("get_credits", {}))
         self._maybe_raise()
         return self.credits_info
+
+    def embeddings_generate(self, **kwargs) -> EmbeddingResult:
+        self.calls.append(("embeddings_generate", kwargs))
+        self._maybe_raise()
+        return self.embedding_result
+
+    def rerank(self, **kwargs) -> RerankResult:
+        self.calls.append(("rerank", kwargs))
+        self._maybe_raise()
+        return self.rerank_result
+
+    def get_model_info(self, **kwargs) -> dict:
+        self.calls.append(("get_model_info", kwargs))
+        self._maybe_raise()
+        return self.model_info
+
+    def list_providers(self) -> list[dict]:
+        self.calls.append(("list_providers", {}))
+        self._maybe_raise()
+        return self.providers
+
+    def get_generation(self, generation_id: str) -> dict:
+        self.calls.append(("get_generation", {"generation_id": generation_id}))
+        self._maybe_raise()
+        return self.generation_info
 
 
 def build_adapter_factory(fake: FakeAdapter) -> Callable[..., FakeAdapter]:

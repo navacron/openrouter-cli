@@ -92,9 +92,13 @@ orouter video generate --prompt "Two Pakistani kites fighting" --model google/ve
 # Generate a video with audio using a specific model
 orouter video generate --prompt "Kids flying kites on a rooftop in Old Lahore, Pakistan" --model bytedance/seedance-2.0 --audio --wait --output lahore_kites.mp4
 
-# Check on a job submitted without --wait, then download it once complete
+# Image-to-video: condition on a first and/or last frame
+orouter video generate --prompt "the kite lifts off and soars" --frame-image kite.png --frame-position first --wait --output liftoff.mp4
+
+# Check on a job submitted without --wait, then wait for and download it whenever you're ready
 orouter video status <job_id>
 orouter video download <job_id> --output paicha.mp4
+orouter video wait <job_id> --output paicha.mp4
 
 # Discover available video models
 orouter video models
@@ -116,6 +120,29 @@ orouter audio speak "Hello from Lahore" --voice alloy --model openai/tts-1 --out
 # Discover chat/vision models before picking --model
 orouter models list --input-modality video
 orouter models list --query gemini
+
+# Look up pricing/context length/supported params for one model
+orouter models info anthropic/claude-sonnet-5
+```
+
+### Providers
+
+```bash
+# List model hosting providers
+orouter providers list
+```
+
+### Embeddings and rerank
+
+```bash
+# Generate embedding vectors for one or more inputs (repeatable --input, or pipe via stdin)
+orouter embed --input "hello world" --model openai/text-embedding-3-small
+
+# Rank documents by relevance to a query
+orouter rerank --query "best kite string" \
+  --document "Barbanne is a nylon string used for kite fighting" \
+  --document "Cotton thread frays quickly against glass-coated manja" \
+  --model cohere/rerank-v3.5 --top-n 1
 ```
 
 ### Account
@@ -123,6 +150,9 @@ orouter models list --query gemini
 ```bash
 # Check your OpenRouter credit balance
 orouter credits
+
+# Look up cost/usage metadata for a past chat/image/video generation by id
+orouter generation info <generation_id>
 ```
 
 ### Environment variables
@@ -135,6 +165,8 @@ orouter credits
 | `OPENROUTER_VIDEO_MODEL` | default model for `video generate` |
 | `OPENROUTER_STT_MODEL` | default model for `audio transcribe` (no built-in default) |
 | `OPENROUTER_TTS_MODEL` | default model for `audio speak` (no built-in default) |
+| `OPENROUTER_EMBEDDING_MODEL` | default model for `embed` (no built-in default) |
+| `OPENROUTER_RERANK_MODEL` | default model for `rerank` (no built-in default) |
 | `OPENROUTER_BASE_URL` | advanced: override the API base URL |
 
 ## Development

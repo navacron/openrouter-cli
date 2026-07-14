@@ -4,7 +4,19 @@ import typer
 from dotenv import find_dotenv, load_dotenv
 
 from openrouter_cli import __version__
-from openrouter_cli.commands import analyze, audio, chat, credits, image, models, video
+from openrouter_cli.commands import (
+    analyze,
+    audio,
+    chat,
+    credits,
+    embed,
+    generation,
+    image,
+    models,
+    providers,
+    rerank,
+    video,
+)
 from openrouter_cli.config import RunContext, set_run_ctx
 
 app = typer.Typer(
@@ -26,9 +38,13 @@ app.add_typer(image.app, name="image")
 app.add_typer(video.app, name="video")
 app.add_typer(models.app, name="models")
 app.add_typer(audio.app, name="audio")
+app.add_typer(providers.app, name="providers")
+app.add_typer(generation.app, name="generation")
 app.command("analyze")(analyze.analyze)
 app.command("chat")(chat.chat)
 app.command("credits")(credits.credits)
+app.command("embed")(embed.embed)
+app.command("rerank")(rerank.rerank)
 
 
 def _version_callback(value: bool) -> None:

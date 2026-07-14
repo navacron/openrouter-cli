@@ -30,3 +30,26 @@ def test_models_list_limit(runner, api_key_env, monkeypatch):
 
     payload = json.loads(result.output)
     assert len(payload["models"]) == 3
+
+
+def test_models_info_splits_author_and_slug(runner, api_key_env, monkeypatch):
+    fake = FakeAdapter(model_info={"id": "anthropic/claude-sonnet-5", "name": "Claude Sonnet 5"})
+    _patch(monkeypatch, fake)
+
+    result = runner.invoke(app, ["models", "info", "anthropic/claude-sonnet-5"])
+
+    assert result.exit_code == 0, result.output
+    assert "Claude Sonnet 5" in result.output
+    call = fake.calls[0]
+    assert call[0] == "get_model_info"
+    assert call[1] == {"author": "anthropic", "slug": "claude-sonnet-5"}
+
+
+def test_models_info_requires_slash(runner, api_key_env, monkeypatch):
+    fake = FakeAdapter(model_info={})
+    _patch(monkeypatch, fake)
+
+    result = runner.invoke(app, ["models", "info", "not-a-valid-id"])
+
+    assert result.exit_code == 2
+    assert not fake.calls

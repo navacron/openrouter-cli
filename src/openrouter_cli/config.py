@@ -84,3 +84,22 @@ def get_tts_model(explicit: Optional[str]) -> str:
             "Discover options with `orouter models list --output-modality audio`."
         )
     return model
+
+
+def get_embedding_model(explicit: Optional[str]) -> str:
+    model = explicit or os.environ.get("OPENROUTER_EMBEDDING_MODEL")
+    if not model:
+        raise ConfigError(
+            "No embedding model specified. Pass --model or set $OPENROUTER_EMBEDDING_MODEL. "
+            "Discover options with `orouter models list --output-modality embeddings`."
+        )
+    return model
+
+
+def get_rerank_model(explicit: Optional[str]) -> str:
+    model = explicit or os.environ.get("OPENROUTER_RERANK_MODEL")
+    if not model:
+        raise ConfigError(
+            "No rerank model specified. Pass --model or set $OPENROUTER_RERANK_MODEL."
+        )
+    return model

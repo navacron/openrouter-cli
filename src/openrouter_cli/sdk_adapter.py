@@ -54,6 +54,20 @@ class CreditsInfo:
     raw: dict[str, Any]
 
 
+@dataclasses.dataclass
+class EmbeddingResult:
+    model: str
+    embeddings: list[Any]
+    raw: dict[str, Any]
+
+
+@dataclasses.dataclass
+class RerankResult:
+    model: str
+    results: list[dict[str, Any]]
+    raw: dict[str, Any]
+
+
 def _model_dump(obj: Any) -> dict[str, Any]:
     if hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")
@@ -213,6 +227,7 @@ class OpenRouterAdapter:
         seed: Optional[int] = None,
         generate_audio: Optional[bool] = None,
         size: Optional[str] = None,
+        frame_images: Optional[list[dict]] = None,
     ) -> VideoJob:
         kwargs: dict[str, Any] = {"model": model, "prompt": prompt}
         for k, v in dict(
@@ -222,6 +237,7 @@ class OpenRouterAdapter:
             seed=seed,
             generate_audio=generate_audio,
             size=size,
+            frame_images=frame_images,
         ).items():
             if v is not None:
                 kwargs[k] = v
@@ -300,6 +316,68 @@ class OpenRouterAdapter:
             balance=data.total_credits - data.total_usage,
             raw=_model_dump(result),
         )
+
+    # -- embeddings / rerank --------------------------------------------------------
+
+    def embeddings_generate(
+        self,
+        *,
+        model: str,
+        input: Any,
+        dimensions: Optional[int] = None,
+        encoding_format: Optional[str] = None,
+        input_type: Optional[str] = None,
+    ) -> EmbeddingResult:
+        kwargs: dict[str, Any] = {"model": model, "input": input}
+        for k, v in dict(
+            dimensions=dimensions, encoding_format=encoding_format, input_type=input_type
+        ).items():
+            if v is not None:
+                kwargs[k] = v
+        result = self._call("embeddings.generate", self._client.embeddings.generate, **kwargs)
+        return EmbeddingResult(
+            model=result.model,
+            embeddings=[d.embedding for d in result.data],
+            raw=_model_dump(result),
+        )
+
+    def rerank(
+        self,
+        *,
+        model: str,
+        query: str,
+        documents: list[str],
+        top_n: Optional[int] = None,
+    ) -> RerankResult:
+        kwargs: dict[str, Any] = {"model": model, "query": query, "documents": documents}
+        if top_n is not None:
+            kwargs["top_n"] = top_n
+        result = self._call("rerank.rerank", self._client.rerank.rerank, **kwargs)
+        results = [
+            {
+                "index": r.index,
+                "relevance_score": r.relevance_score,
+                "document": _model_dump(r.document),
+            }
+            for r in result.results
+        ]
+        return RerankResult(model=result.model, results=results, raw=_model_dump(result))
+
+    # -- model / provider / generation metadata --------------------------------------
+
+    def get_model_info(self, *, author: str, slug: str) -> dict[str, Any]:
+        result = self._call("models.get", self._client.models.get, author=author, slug=slug)
+        return _model_dump(result.data)
+
+    def list_providers(self) -> list[dict[str, Any]]:
+        result = self._call("providers.list", self._client.providers.list)
+        return [_model_dump(p) for p in result.data]
+
+    def get_generation(self, generation_id: str) -> dict[str, Any]:
+        result = self._call(
+            "generations.get_generation", self._client.generations.get_generation, id=generation_id
+        )
+        return _model_dump(result.data)
 
 
 def build_adapter(api_key: str, base_url: Optional[str] = None) -> OpenRouterAdapter:

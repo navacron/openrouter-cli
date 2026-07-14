@@ -43,7 +43,7 @@ def _generate_and_save(
             input_references=input_references,
         )
 
-    paths = io_utils.save_b64_images(result.images_b64, output)
+    paths = io_utils.save_b64_images(result.images_b64, result.media_types, output)
 
     def render(data):
         for p in data["files"]:

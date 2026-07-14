@@ -76,26 +76,18 @@ while IFS= read -r line; do
 done < image_prompts.txt
 ```
 
-**Gotcha:** `orouter image generate` writes the raw returned bytes to whatever extension you pass
-via `--output`, without checking the model's actual returned format
-(`io_utils.py:save_b64_images`, ~line 10-19 - doesn't consult `ImageResult.media_types`). The
-model sometimes returns JPEG bytes even when the file is named `.png`, which silently breaks
-ffmpeg's PNG decoder later and truncates the video. Always verify after generating:
+~~**Gotcha:** `orouter image generate` writes the raw returned bytes to whatever extension you
+pass via `--output`, without checking the model's actual returned format.~~ **Fixed:**
+`io_utils.save_b64_images()` now takes `ImageResult.media_types` and renames the file's extension
+to match the actual returned format when it disagrees with what you asked for (e.g.
+`scene_04.png` becomes `scene_04.jpg` if the model returned JPEG bytes) - `google/gemini-3.1-flash-image`
+returns JPEG for a meaningful fraction of calls even when you name the output `.png`. Filenames in
+your concat list should therefore use a glob (`images/scene_04.*`) rather than assuming `.png`, or
+just check what actually landed on disk:
 
 ```bash
-for f in images/scene_*.png; do echo -n "$f: "; file -b "$f"; done
+for f in images/scene_*.*; do echo -n "$f: "; file -b "$f"; done
 ```
-
-If any say "JPEG image data" instead of "PNG image data", re-encode them to real PNGs in place:
-
-```bash
-for f in images/scene_02.png images/scene_04.png; do   # whichever came back mislabeled
-  ffmpeg -y -i "$f" -frames:v 1 "${f%.png}_fixed.png" && mv "${f%.png}_fixed.png" "$f"
-done
-```
-
-(Longer-term fix: pass `--output-format png` explicitly on every `image generate` call to force
-the model to return PNG, or patch `io_utils.py` to pick the extension from the real media type.)
 
 ### 4. Generate narration audio
 
@@ -165,5 +157,17 @@ ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 fi
    default, got treated as a retryable connection error, and silently retried for up to an hour.~~
    Fixed: `sdk_adapter.py` now passes `timeout_ms=120_000` when constructing the `OpenRouter`
    client.
-2. `io_utils.save_b64_images()` doesn't check the actual returned media type before writing -
-   see the gotcha in step 3. Not yet fixed.
+2. ~~`io_utils.save_b64_images()` doesn't check the actual returned media type before writing.~~
+   Fixed: see step 3 above.
+
+## Possible next-iteration improvement: skip the concat step with image-to-video
+
+`video generate` now supports `--frame-image PATH --frame-position first|last` (repeatable,
+paired by order) for image-to-video generation, and `video wait <job_id> --output ...` for
+picking up a job submitted without `--wait`. Instead of building static stick-figure PNGs and
+stitching them with ffmpeg's concat demuxer, a future iteration could feed each scene's image in
+as the `first_frame` of a short video-generation call per scene (with a prompt describing the
+motion for that beat), then concatenate the resulting video clips instead of stills. More
+expensive and slower (video generation is async, one job per scene), but gives actual motion
+instead of a slideshow. Worth trying once `microsoft/mai-voice-2`-quality TTS timing per scene is
+in hand, so each clip's `--duration` can be set to match its narration line.
